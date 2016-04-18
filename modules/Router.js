@@ -7,7 +7,7 @@ import { routes } from './PropTypes'
 import RouterContext from './RouterContext'
 import { createRoutes } from './RouteUtils'
 import { createRouterObject, createRoutingHistory } from './RouterUtils'
-import warning from './warning'
+import warning from './routerWarning'
 
 function isDeprecatedHistory(history) {
   return !history || !history.__v2_compatible__
@@ -29,7 +29,10 @@ const Router = React.createClass({
     render: func,
     createElement: func,
     onError: func,
-    onUpdate: func
+    onUpdate: func,
+
+    // PRIVATE: For client-side rehydration of server match.
+    matchContext: object
   },
 
   getDefaultProps() {
@@ -59,22 +62,14 @@ const Router = React.createClass({
   },
 
   componentWillMount() {
-    let { history } = this.props
-    const { routes, children } = this.props
-
     const { parseQueryString, stringifyQuery } = this.props
     warning(
       !(parseQueryString || stringifyQuery),
       '`parseQueryString` and `stringifyQuery` are deprecated. Please create a custom history. http://tiny.cc/router-customquerystring'
     )
 
-    if (isDeprecatedHistory(history)) {
-      history = this.wrapDeprecatedHistory(history)
-    }
+    const { history, transitionManager, router } = this.createRouterObjects()
 
-    const transitionManager = createTransitionManager(
-      history, createRoutes(routes || children)
-    )
     this._unlisten = transitionManager.listen((error, state) => {
       if (error) {
         this.handleError(error)
@@ -83,8 +78,30 @@ const Router = React.createClass({
       }
     })
 
-    this.router = createRouterObject(history, transitionManager)
-    this.history = createRoutingHistory(history, transitionManager)
+    this.history = history
+    this.router = router
+  },
+
+  createRouterObjects() {
+    const { matchContext } = this.props
+    if (matchContext) {
+      return matchContext
+    }
+
+    let { history } = this.props
+    const { routes, children } = this.props
+
+    if (isDeprecatedHistory(history)) {
+      history = this.wrapDeprecatedHistory(history)
+    }
+
+    const transitionManager = createTransitionManager(
+      history, createRoutes(routes || children)
+    )
+    const router = createRouterObject(history, transitionManager)
+    const routingHistory = createRoutingHistory(history, transitionManager)
+
+    return { history: routingHistory, transitionManager, router }
   },
 
   wrapDeprecatedHistory(history) {
@@ -94,7 +111,7 @@ const Router = React.createClass({
     if (history) {
       warning(false, 'It appears you have provided a deprecated history object to `<Router/>`, please use a history provided by ' +
                      'React Router with `import { browserHistory } from \'react-router\'` or `import { hashHistory } from \'react-router\'`. ' +
-                     'If you are using a valid custom history please set `history.__v2_compatible__ = true`. http://tiny.cc/router-usinghistory')
+                     'If you are using a custom history please create it with `useRouterHistory`, see http://tiny.cc/router-usinghistory for details.')
       createHistory = () => history
     } else {
       warning(false, '`Router` no longer defaults the history prop to hash history. Please use the `hashHistory` singleton instead. http://tiny.cc/router-defaulthistory')

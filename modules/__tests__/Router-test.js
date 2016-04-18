@@ -2,8 +2,10 @@ import expect from 'expect'
 import React, { Component } from 'react'
 import { render, unmountComponentAtNode } from 'react-dom'
 import createHistory from '../createMemoryHistory'
+import { canUseMembrane } from '../deprecateObjectProperties'
 import Route from '../Route'
 import Router from '../Router'
+import shouldWarn from './shouldWarn'
 
 describe('Router', function () {
 
@@ -169,7 +171,7 @@ describe('Router', function () {
 
   describe('at a route with special characters', function () {
     it('does not double escape', function (done) {
-      // https://github.com/rackt/react-router/issues/1574
+      // https://github.com/reactjs/react-router/issues/1574
       class MyComponent extends Component {
         render() {
           return <div>{this.props.params.someToken}</div>
@@ -187,7 +189,7 @@ describe('Router', function () {
     })
 
     it('does not double escape when nested', function (done) {
-      // https://github.com/rackt/react-router/issues/1574
+      // https://github.com/reactjs/react-router/issues/1574
       class MyWrapperComponent extends Component {
         render() {
           return this.props.children
@@ -213,7 +215,7 @@ describe('Router', function () {
     })
 
     it('is happy to have colons in parameter values', function (done) {
-      // https://github.com/rackt/react-router/issues/1759
+      // https://github.com/reactjs/react-router/issues/1759
       class MyComponent extends Component {
         render() {
           return <div>{this.props.params.foo}</div>
@@ -231,7 +233,7 @@ describe('Router', function () {
     })
 
     it('handles % in parameters', function (done) {
-      // https://github.com/rackt/react-router/issues/1766
+      // https://github.com/reactjs/react-router/issues/1766
       class MyComponent extends Component {
         render() {
           return <div>{this.props.params.name}</div>
@@ -249,7 +251,7 @@ describe('Router', function () {
     })
 
     it('handles forward slashes', function (done) {
-      // https://github.com/rackt/react-router/issues/1865
+      // https://github.com/reactjs/react-router/issues/1865
       class Parent extends Component {
         render() {
           return <div>{this.props.children}</div>
@@ -329,7 +331,11 @@ describe('Router', function () {
 
     it('should support getComponent', function (done) {
       const Component = () => <div />
-      const getComponent = (_, callback) => {
+
+      function getComponent(nextState, callback) {
+        expect(this.getComponent).toBe(getComponent)
+        expect(nextState.location.pathname).toBe('/')
+
         setTimeout(() => callback(null, Component))
       }
 
@@ -349,7 +355,10 @@ describe('Router', function () {
       const foo = () => <div />
       const bar = () => <div />
 
-      const getComponents = (_, callback) => {
+      function getComponents(nextState, callback) {
+        expect(this.getComponents).toBe(getComponents)
+        expect(nextState.location.pathname).toBe('/')
+
         setTimeout(() => callback(null, { foo, bar }))
       }
 
@@ -364,6 +373,30 @@ describe('Router', function () {
         })
       })
     })
+
+    it('should supply location properties to getComponent', function (done) {
+      if (canUseMembrane) {
+        shouldWarn('deprecated')
+      }
+
+      const Component = () => <div />
+      const getComponent = (location, callback) => {
+        expect(location.pathname).toBe('/')
+        setTimeout(() => callback(null, Component))
+      }
+
+      render((
+        <Router history={createHistory('/')} render={renderSpy}>
+          <Route path="/" getComponent={getComponent} />
+        </Router>
+      ), node, function () {
+        setTimeout(function () {
+          expect(componentSpy).toHaveBeenCalledWith([ Component ])
+          done()
+        })
+      })
+    })
+
   })
 
   describe('error handling', function () {

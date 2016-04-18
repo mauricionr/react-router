@@ -1,10 +1,12 @@
 import expect, { spyOn } from 'expect'
 import React, { Component } from 'react'
-import { renderToString } from 'react-dom/server'
-import match from '../match'
+import { renderToStaticMarkup, renderToString } from 'react-dom/server'
+
 import createMemoryHistory from '../createMemoryHistory'
-import RouterContext from '../RouterContext'
 import Link from '../Link'
+import match from '../match'
+import Router from '../Router'
+import RouterContext from '../RouterContext'
 
 describe('server rendering', function () {
 
@@ -43,6 +45,17 @@ describe('server rendering', function () {
     }
   }
 
+  class Async extends Component {
+    render() {
+      return (
+        <div className="Async">
+          <h1>Async</h1>
+          <Link to="/async" activeClassName="async-is-active">Link</Link>
+        </div>
+      )
+    }
+  }
+
   const DashboardRoute = {
     path: '/dashboard',
     component: Dashboard
@@ -55,23 +68,40 @@ describe('server rendering', function () {
 
   const RedirectRoute = {
     path: '/company',
-    onEnter(nextState, replaceState) {
-      replaceState(null, '/about')
+    onEnter(nextState, replace) {
+      replace('/about')
+    }
+  }
+
+  const AsyncRoute = {
+    path: '/async',
+    getComponent(location, cb) {
+      setTimeout(() => cb(null, Async))
     }
   }
 
   const routes = {
     path: '/',
     component: App,
-    childRoutes: [ DashboardRoute, AboutRoute, RedirectRoute ]
+    childRoutes: [ DashboardRoute, AboutRoute, RedirectRoute, AsyncRoute ]
   }
 
-  it('works', function (done) {
+  it('works for synchronous route', function (done) {
     match({ routes, location: '/dashboard' }, function (error, redirectLocation, renderProps) {
       const string = renderToString(
         <RouterContext {...renderProps} />
       )
       expect(string).toMatch(/The Dashboard/)
+      done()
+    })
+  })
+
+  it('works for asynchronous route', function (done) {
+    match({ routes, location: '/async' }, function (error, redirectLocation, renderProps) {
+      const string = renderToString(
+        <RouterContext {...renderProps} />
+      )
+      expect(string).toMatch(/Async/)
       done()
     })
   })
@@ -122,4 +152,62 @@ describe('server rendering', function () {
     })
   })
 
+  it('accepts a basename option', function (done) {
+    match({ routes, location: '/dashboard', basename: '/nasebame' }, function (error, redirectLocation, renderProps) {
+      const string = renderToString(
+        <RouterContext {...renderProps} />
+      )
+      expect(string).toMatch(/\/nasebame/)
+      done()
+    })
+  })
+
+  it('supports basenames with trailing slash', function (done) {
+    match({ routes, location: '/dashboard', basename: '/nasebame/' }, function (error, redirectLocation, renderProps) {
+      const string = renderToString(
+        <RouterContext {...renderProps} />
+      )
+      expect(string).toMatch(/\/nasebame/)
+      done()
+    })
+  })
+
+  describe('server/client consistency', function () {
+    // Just render to static markup here to avoid having to normalize markup.
+
+    it('should match for synchronous route', function () {
+      let serverString
+
+      match({ routes, location: '/dashboard' }, function (error, redirectLocation, renderProps) {
+        serverString = renderToStaticMarkup(
+          <RouterContext {...renderProps} />
+        )
+      })
+
+      const browserString = renderToStaticMarkup(
+        <Router history={createMemoryHistory('/dashboard')} routes={routes} />
+      )
+
+      expect(browserString).toEqual(serverString)
+    })
+
+    it('should match for asynchronous route', function (done) {
+      match({ routes, location: '/async' }, function (error, redirectLocation, renderProps) {
+        const serverString = renderToStaticMarkup(
+          <RouterContext {...renderProps} />
+        )
+
+        match({ history: createMemoryHistory('/async'), routes }, function (error, redirectLocation, renderProps) {
+          const browserString = renderToStaticMarkup(
+            <Router {...renderProps} />
+          )
+
+          expect(browserString).toEqual(serverString)
+          expect(browserString).toMatch(/async-is-active/)
+
+          done()
+        })
+      })
+    })
+  })
 })

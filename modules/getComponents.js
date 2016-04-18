@@ -1,15 +1,45 @@
 import { mapAsync } from './AsyncUtils'
+import { canUseMembrane } from './deprecateObjectProperties'
+import warning from './routerWarning'
 
-function getComponentsForRoute(location, route, callback) {
+function getComponentsForRoute(nextState, route, callback) {
   if (route.component || route.components) {
     callback(null, route.component || route.components)
-  } else if (route.getComponent) {
-    route.getComponent(location, callback)
-  } else if (route.getComponents) {
-    route.getComponents(location, callback)
-  } else {
-    callback()
+    return
   }
+
+  const getComponent = route.getComponent || route.getComponents
+  if (!getComponent) {
+    callback()
+    return
+  }
+
+  const { location } = nextState
+  let nextStateWithLocation
+
+  if (__DEV__ && canUseMembrane) {
+    nextStateWithLocation = { ...nextState }
+
+    // I don't use deprecateObjectProperties here because I want to keep the
+    // same code path between development and production, in that we just
+    // assign extra properties to the copy of the state object in both cases.
+    for (const prop in location) {
+      if (!Object.prototype.hasOwnProperty.call(location, prop)) {
+        continue
+      }
+
+      Object.defineProperty(nextStateWithLocation, prop, {
+        get() {
+          warning(false, 'Accessing location properties from the first argument to `getComponent` and `getComponents` is deprecated. That argument is now the router state (`nextState`) rather than the location. To access the location, use `nextState.location`.')
+          return location[prop]
+        }
+      })
+    }
+  } else {
+    nextStateWithLocation = { ...nextState, ...location }
+  }
+
+  getComponent.call(route, nextStateWithLocation, callback)
 }
 
 /**
@@ -21,7 +51,7 @@ function getComponentsForRoute(location, route, callback) {
  */
 function getComponents(nextState, callback) {
   mapAsync(nextState.routes, function (route, index, callback) {
-    getComponentsForRoute(nextState.location, route, callback)
+    getComponentsForRoute(nextState, route, callback)
   }, callback)
 }
 

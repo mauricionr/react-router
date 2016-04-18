@@ -6,43 +6,43 @@ module.exports = function (config) {
   if (process.env.RELEASE)
     config.singleRun = true
 
-  // Browsers to run on BrowserStack
   var customLaunchers = {
+    // Browsers to run on BrowserStack.
     BS_Chrome: {
       base: 'BrowserStack',
       os: 'Windows',
-      os_version: '8.1',
+      os_version: '10',
       browser: 'chrome',
-      browser_version: '39.0'
+      browser_version: '47.0'
     },
     BS_Firefox: {
       base: 'BrowserStack',
       os: 'Windows',
-      os_version: '8.1',
+      os_version: '10',
       browser: 'firefox',
-      browser_version: '32.0'
+      browser_version: '43.0'
     },
     BS_Safari: {
       base: 'BrowserStack',
       os: 'OS X',
-      os_version: 'Yosemite',
+      os_version: 'El Capitan',
       browser: 'safari',
-      browser_version: '8.0'
+      browser_version: '9.0'
     },
     BS_MobileSafari: {
       base: 'BrowserStack',
       os: 'ios',
-      os_version: '7.0',
+      os_version: '8.3',
       browser: 'iphone',
       real_mobile: false
     },
-//    BS_InternetExplorer9: {
-//      base: 'BrowserStack',
-//      os: 'Windows',
-//      os_version: '7',
-//      browser: 'ie',
-//      browser_version: '9.0'
-//    },
+    BS_MobileSafari: {
+      base: 'BrowserStack',
+      os: 'ios',
+      os_version: '9.1',
+      browser: 'iphone',
+      real_mobile: false
+    },
     BS_InternetExplorer10: {
       base: 'BrowserStack',
       os: 'Windows',
@@ -53,9 +53,15 @@ module.exports = function (config) {
     BS_InternetExplorer11: {
       base: 'BrowserStack',
       os: 'Windows',
-      os_version: '8.1',
+      os_version: '10',
       browser: 'ie',
       browser_version: '11.0'
+    },
+
+    // The ancient Travis Chrome that most projects use in CI.
+    ChromeCi: {
+      base: 'Chrome',
+      flags: [ '--no-sandbox' ]
     }
   }
 
@@ -100,9 +106,7 @@ module.exports = function (config) {
       },
       plugins: [
         new webpack.DefinePlugin({
-          'process.env.NODE_ENV': JSON.stringify('test'),
-          'process.env.SKIP_BC': JSON.stringify(process.env.SKIP_BC || false),
-          'process.env.FAIL_ON_WARNINGS': JSON.stringify(process.env.FAIL_ON_WARNINGS || false)
+          'process.env.NODE_ENV': JSON.stringify('test')
         })
       ]
     },
@@ -151,20 +155,3 @@ module.exports = function (config) {
     }
   }
 }
-
-console.log()
-console.log('===')
-if (process.env.SKIP_BC) {
-  console.warn('`SKIP_BC=1` detected: skipping backwards compatibility tests')
-} else {
-  console.log('`SKIP_BC=1 npm run *` to skip backwards compatibility tests.')
-}
-
-if (process.env.FAIL_ON_WARNINGS) {
-  console.warn('`FAIL_ON_WARNINGS=1` detected: console.error will now fail tests.')
-} else {
-  console.log('`FAIL_ON_WARNINGS=1 npm run *` to cause console warnings to throw errors.')
-}
-console.log('===')
-console.log()
-

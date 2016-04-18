@@ -18,14 +18,14 @@ export RouteContext from './RouteContext'
 export useRoutes from './useRoutes'
 export { createRoutes } from './RouteUtils'
 export RouterContext from './RouterContext'
+export RoutingContext from './RoutingContext'
 export PropTypes from './PropTypes'
 export match from './match'
 export useRouterHistory from './useRouterHistory'
 export { formatPattern } from './PatternUtils'
+export applyRouterMiddleware from './applyRouterMiddleware'
 
 /* histories */
 export browserHistory from './browserHistory'
 export hashHistory from './hashHistory'
 export createMemoryHistory from './createMemoryHistory'
-
-export default from './Router'

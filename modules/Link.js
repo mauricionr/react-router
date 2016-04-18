@@ -1,5 +1,5 @@
 import React from 'react'
-import warning from './warning'
+import warning from './routerWarning'
 
 const { bool, object, string, func, oneOfType } = React.PropTypes
 
@@ -11,20 +11,21 @@ function isModifiedEvent(event) {
   return !!(event.metaKey || event.altKey || event.ctrlKey || event.shiftKey)
 }
 
+// TODO: De-duplicate against hasAnyProperties in createTransitionManager.
 function isEmptyObject(object) {
-  for (let p in object)
-    if (object.hasOwnProperty(p))
+  for (const p in object)
+    if (Object.prototype.hasOwnProperty.call(object, p))
       return false
 
   return true
 }
 
-function createLocationDescriptor({ to, query, hash, state }) {
-  if (typeof to !== 'object') {
+function createLocationDescriptor(to, { query, hash, state }) {
+  if (query || hash || state) {
     return { pathname: to, query, hash, state }
-  } else {
-    return{ query, hash, state, ...to }
   }
+
+  return to
 }
 
 /**
@@ -65,7 +66,6 @@ const Link = React.createClass({
   getDefaultProps() {
     return {
       onlyActiveOnIndex: false,
-      className: '',
       style: {}
     }
   },
@@ -94,9 +94,8 @@ const Link = React.createClass({
     event.preventDefault()
 
     if (allowTransition) {
-      let { state, to, query, hash } = this.props
-
-      const location = createLocationDescriptor({ to, query, hash, state })
+      const { to, query, hash, state } = this.props
+      const location = createLocationDescriptor(to, { query, hash, state })
 
       this.context.router.push(location)
     }
@@ -113,14 +112,18 @@ const Link = React.createClass({
     const { router } = this.context
 
     if (router) {
-      const loc = createLocationDescriptor({ to, query, hash, state })
-
-      props.href = router.createHref(loc)
+      const location = createLocationDescriptor(to, { query, hash, state })
+      props.href = router.createHref(location)
 
       if (activeClassName || (activeStyle != null && !isEmptyObject(activeStyle))) {
-        if (router.isActive(loc, onlyActiveOnIndex)) {
-          if (activeClassName)
-            props.className += props.className === '' ? activeClassName : ` ${activeClassName}`
+        if (router.isActive(location, onlyActiveOnIndex)) {
+          if (activeClassName) {
+            if (props.className) {
+              props.className += ` ${activeClassName}`
+            } else {
+              props.className = activeClassName
+            }
+          }
 
           if (activeStyle)
             props.style = { ...props.style, ...activeStyle }

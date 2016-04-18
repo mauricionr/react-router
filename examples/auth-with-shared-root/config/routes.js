@@ -1,16 +1,17 @@
 import auth from '../utils/auth.js'
 
-function redirectToLogin(nextState, replaceState) {
+function redirectToLogin(nextState, replace) {
   if (!auth.loggedIn()) {
-    replaceState({
-      nextPathname: nextState.location.pathname
-    }, '/login')
+    replace({
+      pathname: '/login',
+      state: { nextPathname: nextState.location.pathname }
+    })
   }
 }
 
-function redirectToDashboard(nextState, replaceState) {
+function redirectToDashboard(nextState, replace) {
   if (auth.loggedIn()) {
-    replaceState(null, '/')
+    replace('/')
   }
 }
 
@@ -18,14 +19,14 @@ export default {
   component: require('../components/App'),
   childRoutes: [
     { path: '/logout',
-      getComponent: (location, cb) => {
+      getComponent: (nextState, cb) => {
         require.ensure([], (require) => {
           cb(null, require('../components/Logout'))
         })
       }
     },
     { path: '/about',
-      getComponent: (location, cb) => {
+      getComponent: (nextState, cb) => {
         require.ensure([], (require) => {
           cb(null, require('../components/About'))
         })
@@ -37,7 +38,7 @@ export default {
         // Unauthenticated routes
         // Redirect to dashboard if user is already logged in
         { path: '/login',
-          getComponent: (location, cb) => {
+          getComponent: (nextState, cb) => {
             require.ensure([], (require) => {
               cb(null, require('../components/Login'))
             })
@@ -51,7 +52,7 @@ export default {
       childRoutes: [
         // Protected routes that don't share the dashboard UI
         { path: '/user/:id',
-          getComponent: (location, cb) => {
+          getComponent: (nextState, cb) => {
             require.ensure([], (require) => {
               cb(null, require('../components/User'))
             })
@@ -62,7 +63,7 @@ export default {
     },
 
     { path: '/',
-      getComponent: (location, cb) => {
+      getComponent: (nextState, cb) => {
         // Share the path
         // Dynamically load the correct component
         if (auth.loggedIn()) {
@@ -75,7 +76,7 @@ export default {
         })
       },
       indexRoute: {
-        getComponent: (location, cb) => {
+        getComponent: (nextState, cb) => {
           // Only load if we're logged in
           if (auth.loggedIn()) {
             return require.ensure([], (require) => {
@@ -90,7 +91,7 @@ export default {
           childRoutes: [
             // Protected nested routes for the dashboard
             { path: '/page2',
-              getComponent: (location, cb) => {
+              getComponent: (nextState, cb) => {
                 require.ensure([], (require) => {
                   cb(null, require('../components/PageTwo'))
                 })
